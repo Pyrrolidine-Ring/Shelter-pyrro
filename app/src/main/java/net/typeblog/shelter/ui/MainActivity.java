@@ -93,16 +93,17 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void init() {
-        if (mStorage.getBoolean(LocalStorageManager.PREF_IS_SETTING_UP) && !Utility.isWorkProfileAvailable(this)) {
-            // System has already finished provisioning, but Shelter still
-            // needs to be brought up inside the work profile
-            mResumeSetup.launch(null);
+        // BYPASS: If a work profile exists (or even if PREF_HAS_SETUP is false),
+        // force mark setup as completed and directly bind services.
+        if (Utility.isWorkProfileAvailable(this)) {
+            mStorage.setBoolean(LocalStorageManager.PREF_HAS_SETUP, true);
+            mStorage.setBoolean(LocalStorageManager.PREF_IS_SETTING_UP, false);
+            SettingsManager.getInstance().applyAll();
+            bindServices();
         } else if (!mStorage.getBoolean(LocalStorageManager.PREF_HAS_SETUP)) {
             mStartSetup.launch(null);
         } else {
-            // Initialize the settings
             SettingsManager.getInstance().applyAll();
-            // Initialize the app (start by binding the services)
             bindServices();
         }
     }
