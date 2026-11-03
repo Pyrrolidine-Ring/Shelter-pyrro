@@ -93,8 +93,7 @@ public class Utility {
         if (i.isPresent()) {
             intent.setComponent(new ComponentName(i.get().activityInfo.packageName, i.get().activityInfo.name));
         } else {
-            // Fallback directly to DummyActivity inside the work profile
-            intent.setComponent(new ComponentName(context.getPackageName(), "net.typeblog.shelter.ui.DummyActivity"));
+            throw new IllegalStateException("Cannot find an intent in other profile");
         }
     }
 
