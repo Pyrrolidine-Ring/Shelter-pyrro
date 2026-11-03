@@ -84,12 +84,6 @@ public class Utility {
         AuthenticationUtility.signIntent(intent);
     }
 
-    public static void transferIntentToProfile(Context context, Intent intent) {
-        transferIntentToProfileUnsigned(context, intent);
-        // Add signature
-        AuthenticationUtility.signIntent(intent);
-    }
-
     public static void transferIntentToProfileUnsigned(Context context, Intent intent) {
         PackageManager pm = context.getPackageManager();
         List<ResolveInfo> info = pm.queryIntentActivities(intent, 0);
