@@ -78,6 +78,12 @@ public class Utility {
     // When there is no other profile, this method would just simply throw
     // an IndexOutOfBoundException
     // which can be caught and resolved.
+    public static void transferIntentToProfile(Context context, Intent intent) {
+        transferIntentToProfileUnsigned(context, intent);
+        // Add signature
+        AuthenticationUtility.signIntent(intent);
+    }
+
     public static void transferIntentToProfileUnsigned(Context context, Intent intent) {
         PackageManager pm = context.getPackageManager();
         List<ResolveInfo> info = pm.queryIntentActivities(intent, 0);
@@ -87,8 +93,7 @@ public class Utility {
         if (i.isPresent()) {
             intent.setComponent(new ComponentName(i.get().activityInfo.packageName, i.get().activityInfo.name));
         } else {
-            // BYPASS: Fall back directly to Shelter's DummyActivity in the target profile
-            // DummyActivity handles all cross-profile actions (TRY_START_SERVICE, START_SERVICE, etc.)
+            // Fallback directly to DummyActivity inside the work profile
             intent.setComponent(new ComponentName(context.getPackageName(), "net.typeblog.shelter.ui.DummyActivity"));
         }
     }
