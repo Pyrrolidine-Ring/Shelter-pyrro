@@ -93,20 +93,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void init() {
-        // BYPASS: If a work profile exists (or even if PREF_HAS_SETUP is false),
-        // force mark setup as completed and directly bind services.
-        if (Utility.isWorkProfileAvailable(this)) {
-            mStorage.setBoolean(LocalStorageManager.PREF_HAS_SETUP, true);
-            mStorage.setBoolean(LocalStorageManager.PREF_IS_SETTING_UP, false);
-            SettingsManager.getInstance().applyAll();
-            bindServices();
-        } else if (!mStorage.getBoolean(LocalStorageManager.PREF_HAS_SETUP)) {
-            mStartSetup.launch(null);
-        } else {
-            SettingsManager.getInstance().applyAll();
-            bindServices();
-        }
+        // HARD BYPASS: Always treat setup as complete and bind directly
+        mStorage.setBoolean(LocalStorageManager.PREF_HAS_SETUP, true);
+        mStorage.setBoolean(LocalStorageManager.PREF_IS_SETTING_UP, false);
+        SettingsManager.getInstance().applyAll();
+        bindServices();
     }
+
 
     private void setupWizardCb(Boolean result) {
         if (result)
@@ -146,7 +139,7 @@ public class MainActivity extends AppCompatActivity {
             // This exception implies a missing work profile, NOT a disabled work profile
             // which means that the work profile does not even exist
             // in the first place.
-            mStorage.setBoolean(LocalStorageManager.PREF_HAS_SETUP, false);
+         // mStorage.setBoolean(LocalStorageManager.PREF_HAS_SETUP, false);
             Toast.makeText(this, getString(R.string.work_profile_not_found), Toast.LENGTH_LONG).show();
             finish();
             return;
