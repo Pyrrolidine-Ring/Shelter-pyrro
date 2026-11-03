@@ -84,18 +84,10 @@ public class Utility {
         AuthenticationUtility.signIntent(intent);
     }
 
-    public static void transferIntentToProfileUnsigned(Context context, Intent intent) {
-        PackageManager pm = context.getPackageManager();
-        List<ResolveInfo> info = pm.queryIntentActivities(intent, 0);
-        Optional<ResolveInfo> i = info.stream()
-                .filter((r) -> !r.activityInfo.packageName.equals(context.getPackageName()))
-                .findFirst();
-        if (i.isPresent()) {
-            intent.setComponent(new ComponentName(i.get().activityInfo.packageName, i.get().activityInfo.name));
-        } else {
-            // Fallback directly to DummyActivity inside the work profile
-            intent.setComponent(new ComponentName(context.getPackageName(), "net.typeblog.shelter.ui.DummyActivity"));
-        }
+    public static void transferIntentToProfile(Context context, Intent intent) {
+        transferIntentToProfileUnsigned(context, intent);
+        // Add signature
+        AuthenticationUtility.signIntent(intent);
     }
 
     public static void transferIntentToProfileUnsigned(Context context, Intent intent) {
@@ -107,7 +99,8 @@ public class Utility {
         if (i.isPresent()) {
             intent.setComponent(new ComponentName(i.get().activityInfo.packageName, i.get().activityInfo.name));
         } else {
-            throw new IllegalStateException("Cannot find an intent in other profile");
+            // Fallback directly to DummyActivity inside the work profile
+            intent.setComponent(new ComponentName(context.getPackageName(), "net.typeblog.shelter.ui.DummyActivity"));
         }
     }
 
