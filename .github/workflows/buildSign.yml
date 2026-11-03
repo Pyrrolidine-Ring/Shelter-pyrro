@@ -1,0 +1,94 @@
+name: Build and Sign Shelter-pyrro
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+
+      - name: Assemble Release APK
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Locate Android Build Tools
+        run: |
+          BUILD_TOOLS_PATH=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -n 1)
+          echo "BUILD_TOOLS=$BUILD_TOOLS_PATH" >> $GITHUB_ENV
+          echo "Using Android Build Tools from: $BUILD_TOOLS_PATH"
+
+      - name: Decode Keystore and Sign APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          # 1. Decode PKCS#12 keystore from organization secret
+          echo "$KEYSTORE_BASE64" | base64 -d > /tmp/alphapyrro.p12
+
+          # 2. Find the generated release APK (handles varying output filenames)
+          RAW_APK=$(find app/build/outputs/apk/release -name "*.apk" ! -name "*unaligned*" | head -n 1)
+          if [ -z "$RAW_APK" ]; then
+            RAW_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          fi
+          echo "Discovered APK at: $RAW_APK"
+
+          # 3. Zipalign the unsigned package
+          $BUILD_TOOLS/zipalign -v -p 4 "$RAW_APK" /tmp/shelter-aligned.apk
+
+          # 4. Sign with apksigner using the alphapyrro PKCS12 key
+          $BUILD_TOOLS/apksigner sign \
+            --ks /tmp/alphapyrro.p12 \
+            --ks-type PKCS12 \
+            --ks-pass "pass:$KEYSTORE_PASSWORD" \
+            --ks-key-alias "$KEY_ALIAS" \
+            --key-pass "pass:$KEY_PASSWORD" \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
+            --out Shelter-pyrro-signed.apk \
+            /tmp/shelter-aligned.apk
+
+          # 5. Verify the signature and print fingerprint
+          $BUILD_TOOLS/apksigner verify --verbose --print-certs Shelter-pyrro-signed.apk
+
+          # 6. Securely wipe intermediate signing files
+          rm -f /tmp/alphapyrro.p12 /tmp/shelter-aligned.apk
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Shelter-pyrro-signed
+          path: Shelter-pyrro-signed.apk
+          retention-days: 14
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Shelter-pyrro-signed.apk
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
